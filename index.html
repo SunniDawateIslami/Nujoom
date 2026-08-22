@@ -397,7 +397,7 @@ window.addEventListener('error', function(e){ showGlobalError(e.message + ' (' +
 window.addEventListener('unhandledrejection', function(e){ showGlobalError('Unhandled promise rejection: ' + (e.reason && e.reason.message ? e.reason.message : e.reason)); });
 
 /* ============== App state ============== */
-let DB = { users:{}, classes:{}, registers:{}, hifz:{}, assignments:{}, submissions:{}, behaviours:{}, parentNotifies:{}, messages:{}, generalInfo:{}, leaveRequests:{} };
+let DB = { users:{}, classes:{}, registers:{}, hifz:{}, assignments:{}, submissions:{}, behaviours:{}, parentNotifies:{}, messages:{}, generalInfo:{}, leaveRequests:{}, plannedAbsences:{} };
 let currentUser = null;
 let activeTab = null;
 let authMode = 'login'; // login | register
@@ -441,6 +441,8 @@ let assignClassHT = null;
 let assignClassTeacher = null;
 let parentSelectedChild = null;
 let pendingClearRegisters = false;
+let absenceCalMonth = null; // {year, month(0-11)} currently displayed in the planned-absence calendar
+let absenceSelectedDates = []; // array of 'YYYY-MM-DD' strings currently ticked
 let userFilterRole = 'all'; // all | teacher | student | parent
 let userSortBy = 'name'; // name | class | age
 let attFilterBand = 'all'; // all | good | monitor | concern | none
@@ -668,6 +670,19 @@ async function fetchLeaveRequests(){
     };
   });
 }
+async function fetchPlannedAbsences(){
+  const { data, error } = await sb.from('planned_absences').select('*');
+  DB.plannedAbsences = {};
+  if(error){ console.error('fetchPlannedAbsences error', error); showGlobalError('fetchPlannedAbsences: ' + (error.message||error.details||error.hint||JSON.stringify(error))); return; }
+  (data||[]).forEach(row=>{
+    DB.plannedAbsences['absence:'+row.id] = {
+      key:'absence:'+row.id, id:row.id, studentUsername: row.student_username,
+      classId: row.class_id ? 'class:'+row.class_id : null, parentKey: keyForUserId(row.parent_id),
+      dates: row.dates || [], reason: row.reason,
+      createdAt: row.created_at ? new Date(row.created_at).getTime() : null
+    };
+  });
+}
 async function notifyTeacherOfMessage(teacherKey, studentUsername){
   try{
     const teacher = DB.users[teacherKey];
@@ -721,6 +736,7 @@ async function refreshAll(){
   await fetchMessages();
   await fetchGeneralInfo();
   await fetchLeaveRequests();
+  await fetchPlannedAbsences();
 }
 function usersByRole(role, statusFilter){
   return Object.values(DB.users).filter(u=>u.role===role && (!statusFilter || u.status===statusFilter));
@@ -1226,6 +1242,7 @@ function renderHeadteacher(){
     {id:'parentmsgs', label:`Parent Messages (${Object.values(DB.parentNotifies).filter(n=>n.status==='pending').length})`},
     {id:'messages', label:'All Messages'},
     {id:'leave', label:'Annual Leave'},
+    {id:'plannedabsences', label:'Planned Absences'},
     {id:'generalinfo', label:'General Information'},
     {id:'account', label:'Account'},
   ];
@@ -1249,9 +1266,14 @@ function renderHeadteacher(){
   else if(activeTab==='parentmsgs') content = htParentMessages();
   else if(activeTab==='messages') content = htAllMessages();
   else if(activeTab==='leave') content = htLeave(false);
+  else if(activeTab==='plannedabsences') content = htPlannedAbsences();
   else if(activeTab==='generalinfo') content = renderGeneralInfo();
   else if(activeTab==='account') content = accountPanel();
   return dashboardLayout(tabs, content);
+}
+function htPlannedAbsences(){
+  const all = Object.values(DB.plannedAbsences);
+  return `<div class="panel"><h3>Planned Absences</h3><div class="desc">Absences registered in advance by parents, across all classes.</div>${plannedAbsenceListHtml(all)}</div>`;
 }
 
 function htOverview(){
@@ -2248,6 +2270,11 @@ function teachesHifzClass(){
   const hifzClass = classList().find(c=>c.protected);
   return hifzClass ? (currentUser.classIds||[]).includes(hifzClass.key) : false;
 }
+function teacherPlannedAbsences(){
+  const isAdmin = !!currentUser.isAdmin;
+  const mine = isAdmin ? Object.values(DB.plannedAbsences) : Object.values(DB.plannedAbsences).filter(a=>a.classId && (currentUser.classIds||[]).includes(a.classId));
+  return `<div class="panel"><h3>Planned Absences</h3><div class="desc">Absences registered in advance by parents${isAdmin?', across all classes':' for your classes'}.</div>${plannedAbsenceListHtml(mine)}</div>`;
+}
 function renderTeacher(){
   const isAdmin = !!currentUser.isAdmin;
   const tabs = [
@@ -2259,6 +2286,7 @@ function renderTeacher(){
     {id:'assignments', label:'Homework'},
     {id:'messages', label:'Messages'},
     {id:'leave', label:'Annual Leave'},
+    {id:'plannedabsences', label:'Planned Absences'},
     ...(isAdmin ? [
       {id:'adminusers', label:'All users'},
       {id:'adminregisters', label:'Registers'},
@@ -2282,6 +2310,7 @@ function renderTeacher(){
   else if(activeTab==='assignments') content = teacherAssignments();
   else if(activeTab==='messages') content = teacherMessages();
   else if(activeTab==='leave') content = teacherLeave();
+  else if(activeTab==='plannedabsences') content = teacherPlannedAbsences();
   else if(activeTab==='adminusers') content = htUsers(true);
   else if(activeTab==='adminregisters') content = htRegisters();
   else if(activeTab==='adminwork') content = htWork();
@@ -2430,8 +2459,89 @@ function parentContact(){
   const opts = teachers.map(t=>`<option value="${t.key}">${escapeHtml(t.name)}</option>`).join('');
   return `<div class="panel"><h3>Contact Teacher — ${escapeHtml(selected.name)}</h3>${html}${contactNote}<label>Teacher</label><select id="contactTeacherSelect">${opts}</select><label>Message</label><textarea id="contactMessageBody" placeholder="Write your message..."></textarea><div class="form-actions"><button class="btn btn-primary" type="button" id="contactSendBtn">Send message</button></div>${msg}</div>`;
 }
+function pad2(n){ return n<10 ? '0'+n : ''+n; }
+function ymd(year, month, day){ return `${year}-${pad2(month+1)}-${pad2(day)}`; }
+function todayYmd(){ const d = new Date(); return ymd(d.getFullYear(), d.getMonth(), d.getDate()); }
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function absenceCalendarHtml(){
+  if(!absenceCalMonth){ const d = new Date(); absenceCalMonth = {year: d.getFullYear(), month: d.getMonth()}; }
+  const { year, month } = absenceCalMonth;
+  const firstOfMonth = new Date(year, month, 1);
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  let leadingBlanks = firstOfMonth.getDay() - 1; // Monday-start week
+  if(leadingBlanks < 0) leadingBlanks = 6;
+  const today = todayYmd();
+  let cells = '';
+  for(let i=0;i<leadingBlanks;i++) cells += `<div class="cal-cell cal-blank"></div>`;
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = ymd(year, month, day);
+    const isPast = dateStr < today;
+    const isSelected = absenceSelectedDates.includes(dateStr);
+    const cls = ['cal-cell', isPast?'cal-past':'cal-pick', isSelected?'cal-selected':''].filter(Boolean).join(' ');
+    cells += isPast
+      ? `<div class="${cls}">${day}</div>`
+      : `<div class="${cls}" data-absence-day="${dateStr}">${day}</div>`;
+  }
+  const dowHeaders = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  return `
+  <div class="cal-widget">
+    <div class="cal-nav">
+      <button class="btn btn-sm" type="button" data-absence-cal-prev>‹</button>
+      <div class="cal-month-label">${MONTH_NAMES[month]} ${year}</div>
+      <button class="btn btn-sm" type="button" data-absence-cal-next>›</button>
+    </div>
+    <div class="cal-grid">${dowHeaders}${cells}</div>
+    <div class="field-note" style="margin-top:8px;">${absenceSelectedDates.length===0 ? 'No dates selected yet — tap the days your child will be absent.' : `${absenceSelectedDates.length} day${absenceSelectedDates.length===1?'':'s'} selected: ${absenceSelectedDates.slice().sort().map(d=>fmtDate(new Date(d+'T00:00:00').getTime())).join(', ')}`}</div>
+  </div>
+  <style>
+    .cal-widget{max-width:420px;}
+    .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+    .cal-month-label{font-weight:600;}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+    .cal-dow{text-align:center;font-size:12px;opacity:0.65;padding:4px 0;}
+    .cal-cell{text-align:center;padding:8px 0;border-radius:6px;font-size:14px;}
+    .cal-blank{visibility:hidden;}
+    .cal-past{opacity:0.3;}
+    .cal-pick{cursor:pointer;border:1px solid var(--btn-border);}
+    .cal-pick:hover{background:var(--card-alt-bg);}
+    .cal-selected{background:var(--brass);color:var(--ink);font-weight:600;border-color:var(--brass);}
+  </style>`;
+}
+function plannedAbsenceListHtml(list){
+  if(list.length===0) return `<div class="empty">No planned absences registered.</div>`;
+  const sorted = list.slice().sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+  return sorted.map(a=>{
+    const student = DB.users['user:'+a.studentUsername];
+    const parent = DB.users[a.parentKey];
+    const dates = (a.dates||[]).slice().sort().map(d=>fmtDate(new Date(d+'T00:00:00').getTime())).join(', ');
+    return `<div class="assign-card">
+      <h4>${student?escapeHtml(student.name):escapeHtml(a.studentUsername)}</h4>
+      <div class="assign-meta">${dates} &middot; registered ${fmtDateTime(a.createdAt)}${parent?' by '+escapeHtml(parent.name):''}</div>
+      <div class="assign-desc">${escapeHtml(a.reason)}</div>
+    </div>`;
+  }).join('');
+}
+function parentAbsence(){
+  const { children, selected, html } = childSelector();
+  if(children.length===0) return `<div class="panel"><h3>Register a planned leave of absence</h3><div class="empty">No child linked to your account yet.</div></div>`;
+  const mine = Object.values(DB.plannedAbsences).filter(a=>a.studentUsername===selected.username);
+  return `
+  <div class="panel">
+    <h3>Register a planned leave of absence — ${escapeHtml(selected.name)}</h3>
+    ${html}
+    <div class="desc">Select the day(s) your child will be absent, then give a reason. This lets the Madrasah know in advance.</div>
+    ${absenceCalendarHtml()}
+    <label>Reason (required)</label>
+    <textarea id="absenceReason" placeholder="e.g. Family wedding abroad" required></textarea>
+    <div class="form-actions"><button class="btn btn-primary" type="button" id="absenceSubmitBtn">Register absence</button></div>
+  </div>
+  <div class="panel">
+    <h3>Previously registered absences — ${escapeHtml(selected.name)}</h3>
+    ${plannedAbsenceListHtml(mine)}
+  </div>`;
+}
 function renderParent(){
-  const tabs = [ {id:'homework', label:'Homework'}, {id:'attendance', label:'Attendance'}, {id:'hifz', label:'Hifz Progress'}, {id:'messages', label:'Messages'}, {id:'contact', label:'Contact Teacher'}, {id:'generalinfo', label:'General Information'}, {id:'account', label:'Account'} ];
+  const tabs = [ {id:'homework', label:'Homework'}, {id:'attendance', label:'Attendance'}, {id:'hifz', label:'Hifz Progress'}, {id:'messages', label:'Messages'}, {id:'contact', label:'Contact Teacher'}, {id:'absence', label:'Register a planned leave of absence'}, {id:'generalinfo', label:'General Information'}, {id:'account', label:'Account'} ];
   if(!activeTab) activeTab='homework';
   let content = '';
   if(activeTab==='homework') content = parentHomework();
@@ -2439,6 +2549,7 @@ function renderParent(){
   else if(activeTab==='hifz') content = parentHifzProgress();
   else if(activeTab==='messages') content = parentMessages();
   else if(activeTab==='contact') content = parentContact();
+  else if(activeTab==='absence') content = parentAbsence();
   else if(activeTab==='generalinfo') content = renderGeneralInfo();
   else if(activeTab==='account') content = accountPanel();
   return dashboardLayout(tabs, content);
@@ -2894,6 +3005,55 @@ function bindTabSpecificEvents(){
       }catch(err){ showGlobalError(err.message || String(err)); }
     });
   });
+  const absenceCalPrev = document.querySelector('[data-absence-cal-prev]');
+  if(absenceCalPrev){
+    absenceCalPrev.addEventListener('click', ()=>{
+      let { year, month } = absenceCalMonth;
+      month -= 1; if(month < 0){ month = 11; year -= 1; }
+      absenceCalMonth = { year, month };
+      render();
+    });
+  }
+  const absenceCalNext = document.querySelector('[data-absence-cal-next]');
+  if(absenceCalNext){
+    absenceCalNext.addEventListener('click', ()=>{
+      let { year, month } = absenceCalMonth;
+      month += 1; if(month > 11){ month = 0; year += 1; }
+      absenceCalMonth = { year, month };
+      render();
+    });
+  }
+  app.querySelectorAll('[data-absence-day]').forEach(cell=>{
+    cell.addEventListener('click', ()=>{
+      const d = cell.dataset.absenceDay;
+      const idx = absenceSelectedDates.indexOf(d);
+      if(idx===-1) absenceSelectedDates.push(d); else absenceSelectedDates.splice(idx,1);
+      render();
+    });
+  });
+  const absenceSubmitBtn = document.getElementById('absenceSubmitBtn');
+  if(absenceSubmitBtn){
+    absenceSubmitBtn.addEventListener('click', async ()=>{
+      try{
+        const reason = document.getElementById('absenceReason').value.trim();
+        if(absenceSelectedDates.length===0){ showGlobalError('Please select at least one day.'); return; }
+        if(!reason){ showGlobalError('Please give a reason for the absence.'); return; }
+        const { selected } = childSelector();
+        if(!selected) return;
+        const { error } = await sb.from('planned_absences').insert({
+          student_username: selected.username,
+          class_id: selected.classId ? selected.classId.replace('class:','') : null,
+          parent_id: currentUser.id,
+          dates: absenceSelectedDates.slice(),
+          reason
+        });
+        if(error){ showGlobalError(error.message); return; }
+        absenceSelectedDates = [];
+        document.getElementById('absenceReason').value = '';
+        await refreshAll(); render();
+      }catch(err){ showGlobalError(err.message || String(err)); }
+    });
+  }
   const leaveSubmitBtn = document.getElementById('leaveSubmitBtn');
   if(leaveSubmitBtn){
     leaveSubmitBtn.addEventListener('click', async ()=>{
@@ -3250,7 +3410,7 @@ function bindTabSpecificEvents(){
     });
   });
   const parentChildSelect = document.getElementById('parentChildSelect');
-  if(parentChildSelect) parentChildSelect.addEventListener('change', ()=>{ parentSelectedChild = parentChildSelect.value; render(); });
+  if(parentChildSelect) parentChildSelect.addEventListener('change', ()=>{ parentSelectedChild = parentChildSelect.value; absenceSelectedDates = []; render(); });
   app.querySelectorAll('[data-parent-send-reply]').forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       try{
