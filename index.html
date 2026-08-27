@@ -89,6 +89,7 @@ button{font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;}
 }
 .brand:hover{background:rgba(148,193,31,0.08);}
 .brand-mark{width:44px;height:44px;flex:none;}
+.brand-marks{display:flex;align-items:center;gap:8px;flex:none;}
 .brand-text .display{font-size:1.35rem;margin:0;color:var(--fg);letter-spacing:0.01em;}
 .brand-text .sub{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.16em;color:var(--label-accent);margin-top:2px;}
 .topbar-buttons-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -265,6 +266,7 @@ tr:last-child td{border-bottom:none;}
 @media(max-width:640px){
   .topbar{padding:12px 14px;gap:10px;}
   .brand-mark{width:36px;height:36px;}
+  .brand-marks{gap:6px;}
   .brand-text .display{font-size:1.08rem;}
   .brand-text .sub{font-size:0.6rem;letter-spacing:0.1em;}
   main{padding:10px 12px 60px;}
@@ -771,7 +773,7 @@ function shell(innerHtml){
   ${!currentUser ? `<div class="bismillah-bar"><span lang="ar" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</span></div>` : ''}
   <div class="topbar">
     <button class="brand" id="brandHomeBtn" title="Go to home">
-      <div class="brand-mark" style="display:flex;align-items:center;gap:8px;">${logoImg(44)}${sdiLogoImg(44)}</div>
+      <div class="brand-marks">${logoImg(44)}${sdiLogoImg(44)}</div>
       <div class="brand-text">
         <h1 class="display">Madrasah Nujoom</h1>
         <div class="sub">Student &amp; Teacher Portal</div>
