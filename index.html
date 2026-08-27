@@ -972,9 +972,7 @@ function renderAuth(){
       ${err}
     </div>
   </div>
-  <div class="setup-note">
-    <strong>System status:</strong> ${bootDiag.ok===false ? `Connection issue (${escapeHtml(bootDiag.error||'unknown error')}).` : `Connected to Supabase. ${Object.keys(DB.users).length} account(s) on file.`}
-  </div>
+  ${bootDiag.ok===false ? `<div class="setup-note"><strong>System status:</strong> Connection issue (${escapeHtml(bootDiag.error||'unknown error')}).</div>` : ''}
   `;
 }
 function renderLoginForm(){
