@@ -48,6 +48,7 @@ body.light{
 *{box-sizing:border-box;}
 body{margin:0;background:var(--ink);color:var(--fg);font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh;line-height:1.55;}
 h1,h2,h3,.display{font-family:'Cormorant Garamond',serif;}
+.cavolini-font{font-family:'Cavolini','Segoe Script','Bradley Hand','Comic Sans MS',cursive;}
 .mono{font-family:'Space Mono',monospace;letter-spacing:0.02em;}
 a{color:inherit;}
 button{font-family:'Plus Jakarta Sans',sans-serif;cursor:pointer;}
@@ -783,7 +784,7 @@ function shell(innerHtml){
       <button class="brand" id="brandHomeBtn" title="Go to home">
         <div class="brand-mark">${logoImg(44)}</div>
         <div class="brand-text">
-          <h1 class="display">Nujoom Madrasah</h1>
+          <h1 class="display cavolini-font">Nujoom Madrasah</h1>
           <div class="sub">Student &amp; Teacher Portal</div>
         </div>
       </button>
@@ -957,7 +958,7 @@ function renderAuth(){
   return `
   <div class="hero">
     <img src="${LOGO_HERO}" alt="Nujoom Madrasah crest" class="hero-crest" />
-    <h1 class="display">Welcome</h1>
+    <h1 class="display cavolini-font">Welcome</h1>
     <p>Sign in or register below. New accounts need Headteacher approval.</p>
     <div class="divider">${dividerRow()}</div>
   </div>
