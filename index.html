@@ -192,29 +192,34 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--brass);outline-o
   margin-top:14px;align-self:center;
 }
 .theme-toggle-switch{
-  display:inline-flex;align-items:center;gap:10px;background:none;border:none;cursor:pointer;padding:4px;
+  display:inline-flex;align-items:center;background:none;border:none;cursor:pointer;padding:0;
 }
-.theme-toggle-switch .tts-icon{display:flex;align-items:center;color:var(--fg);opacity:0.55;}
 .theme-toggle-switch .tts-track{
-  width:50px;height:26px;border-radius:20px;position:relative;flex:none;
+  width:64px;height:32px;border-radius:20px;position:relative;flex:none;
   background:var(--ink-2);
-  box-shadow:inset 3px 3px 6px rgba(0,0,0,0.35), inset -3px -3px 6px rgba(255,255,255,0.06);
+  box-shadow:inset 3px 3px 7px rgba(0,0,0,0.4), inset -3px -3px 7px rgba(255,255,255,0.05);
   transition:background 0.2s;
 }
+.theme-toggle-switch .tts-icon{
+  position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;
+  width:24px;height:24px;
+}
+.theme-toggle-switch .tts-sun{left:4px;color:var(--brass-light);}
+.theme-toggle-switch .tts-moon{right:4px;color:var(--sage);}
 .theme-toggle-switch .tts-knob{
-  position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;
   background:var(--ink-3);
-  box-shadow:2px 2px 5px rgba(0,0,0,0.4), -2px -2px 5px rgba(255,255,255,0.05);
+  box-shadow:2px 2px 6px rgba(0,0,0,0.45), -2px -2px 6px rgba(255,255,255,0.04);
   transition:left 0.2s ease;
 }
-.theme-toggle-switch.is-dark .tts-knob{left:27px;}
+.theme-toggle-switch.is-dark .tts-knob{left:36px;}
 body.light .theme-toggle-switch .tts-track{
   background:var(--parchment-2);
-  box-shadow:inset 3px 3px 6px rgba(0,0,0,0.12), inset -3px -3px 6px rgba(255,255,255,0.85);
+  box-shadow:inset 3px 3px 7px rgba(0,0,0,0.14), inset -3px -3px 7px rgba(255,255,255,0.85);
 }
 body.light .theme-toggle-switch .tts-knob{
   background:var(--white);
-  box-shadow:2px 2px 5px rgba(0,0,0,0.15), -2px -2px 5px rgba(255,255,255,0.9);
+  box-shadow:2px 2px 6px rgba(0,0,0,0.18), -2px -2px 6px rgba(255,255,255,0.9);
 }
 .theme-toggle-center{display:flex;justify-content:center;padding:24px 0 8px;}
 .nav button:hover{color:var(--fg);}
@@ -398,9 +403,11 @@ function iconMoon(){
 }
 function themeToggleSwitch(){
   return `<button class="theme-toggle-switch ${theme==='dark'?'is-dark':''}" id="themeToggleBtn" title="Switch light/dark mode">
-    <span class="tts-icon tts-sun">${iconSun()}</span>
-    <span class="tts-track"><span class="tts-knob"></span></span>
-    <span class="tts-icon tts-moon">${iconMoon()}</span>
+    <span class="tts-track">
+      <span class="tts-icon tts-sun">${iconSun()}</span>
+      <span class="tts-icon tts-moon">${iconMoon()}</span>
+      <span class="tts-knob"></span>
+    </span>
   </button>`;
 }
 function brandDivider(){
