@@ -189,11 +189,34 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--brass);outline-o
 .nav button.active{color:var(--label-accent);border-left-color:var(--brass);background:rgba(148,193,31,0.1);}
 .nav-spacer{flex:1;min-height:20px;border-top:1px solid rgba(148,193,31,0.2);margin-top:14px;}
 .nav #themeToggleBtn{
-  width:100%;justify-content:flex-start;text-align:left;margin-top:14px;
-  border:1px solid var(--btn-border);background:transparent;color:var(--fg);
-  padding:9px 18px;font-weight:600;
+  margin-top:14px;align-self:center;
 }
-.nav #themeToggleBtn:hover{border-color:var(--brass);color:var(--label-accent);}
+.theme-toggle-switch{
+  display:inline-flex;align-items:center;gap:10px;background:none;border:none;cursor:pointer;padding:4px;
+}
+.theme-toggle-switch .tts-icon{display:flex;align-items:center;color:var(--fg);opacity:0.55;}
+.theme-toggle-switch .tts-track{
+  width:50px;height:26px;border-radius:20px;position:relative;flex:none;
+  background:var(--ink-2);
+  box-shadow:inset 3px 3px 6px rgba(0,0,0,0.35), inset -3px -3px 6px rgba(255,255,255,0.06);
+  transition:background 0.2s;
+}
+.theme-toggle-switch .tts-knob{
+  position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+  background:var(--ink-3);
+  box-shadow:2px 2px 5px rgba(0,0,0,0.4), -2px -2px 5px rgba(255,255,255,0.05);
+  transition:left 0.2s ease;
+}
+.theme-toggle-switch.is-dark .tts-knob{left:27px;}
+body.light .theme-toggle-switch .tts-track{
+  background:var(--parchment-2);
+  box-shadow:inset 3px 3px 6px rgba(0,0,0,0.12), inset -3px -3px 6px rgba(255,255,255,0.85);
+}
+body.light .theme-toggle-switch .tts-knob{
+  background:var(--white);
+  box-shadow:2px 2px 5px rgba(0,0,0,0.15), -2px -2px 5px rgba(255,255,255,0.9);
+}
+.theme-toggle-center{display:flex;justify-content:center;padding:24px 0 8px;}
 .nav button:hover{color:var(--fg);}
 .sidebar-toggle{display:none;}
 .sidebar-backdrop{display:none;}
@@ -372,6 +395,13 @@ function iconSun(){
 }
 function iconMoon(){
   return `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20.5 14.5a8.5 8.5 0 1 1-9-11 7 7 0 0 0 9 11Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>`;
+}
+function themeToggleSwitch(){
+  return `<button class="theme-toggle-switch ${theme==='dark'?'is-dark':''}" id="themeToggleBtn" title="Switch light/dark mode">
+    <span class="tts-icon tts-sun">${iconSun()}</span>
+    <span class="tts-track"><span class="tts-knob"></span></span>
+    <span class="tts-icon tts-moon">${iconMoon()}</span>
+  </button>`;
 }
 function brandDivider(){
   return `<svg viewBox="0 0 260 14" width="220" height="14" xmlns="http://www.w3.org/2000/svg">
@@ -806,11 +836,7 @@ function shell(innerHtml){
       <button class="btn btn-sm sidebar-toggle" id="sidebarToggleBtn" title="Menu">${iconMenu()} Menu</button>
       <button class="btn btn-sm" id="refreshBtn" title="Reload the latest data">${iconRefresh()} Refresh</button>
     </div>
-    ` : `
-    <div class="topbar-buttons-row">
-      <button class="btn btn-sm" id="themeToggleBtn" title="Switch light/dark mode">${theme==='light' ? iconMoon()+' Dark mode' : iconSun()+' Light mode'}</button>
-    </div>
-    `}
+    ` : ``}
   </div>
   <main>${innerHtml}</main>
   <div class="footer-note">Nujoom Madrasah &middot; internal portal<br>Built by M.Moazzin</div>
@@ -973,6 +999,7 @@ function renderAuth(){
       ${err}
     </div>
   </div>
+  <div class="theme-toggle-center">${themeToggleSwitch()}</div>
   ${bootDiag.ok===false ? `<div class="setup-note"><strong>System status:</strong> Connection issue (${escapeHtml(bootDiag.error||'unknown error')}).</div>` : ''}
   `;
 }
@@ -1187,7 +1214,7 @@ function navBar(tabs){
   return `<div class="nav">
     ${tabs.map(t=>`<button data-tab="${t.id}" class="${activeTab===t.id?'active':''}">${t.label}</button>`).join('')}
     <div class="nav-spacer"></div>
-    <button class="btn btn-sm" id="themeToggleBtn" title="Switch light/dark mode">${theme==='light' ? iconMoon()+' Dark mode' : iconSun()+' Light mode'}</button>
+    ${themeToggleSwitch()}
   </div>`;
 }
 function dashboardLayout(tabs, content){
